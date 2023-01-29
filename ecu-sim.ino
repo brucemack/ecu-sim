@@ -38,19 +38,18 @@ static void processByte(byte b) {
     rxMsgLen++;
   }
 
+  // In this state we are waiting for ~KW1
   if (state_B == 1) {
-    if (b == ~0x08) {
+    if (b == 0xf7) {
       state_B = 2;
       rxMsgLen = 0;
       Serial1.write(0xcc);
     }
   }
   else if (state_B == 2) {
-    {
-      char buf[16];
-      sprintf(buf,"%x",(int)b);
-      Serial.println(buf);
-    }
+    char buf[16];
+    sprintf(buf,"%x",(int)b);
+    Serial.println(buf);
   }
 }
 
@@ -118,6 +117,7 @@ void loop() {
       lastActivityStamp = now;
     }
   }
+  // In this state we process normal serial data
   else if (state_A == 2) {
 
     // Look for a timeout
@@ -130,7 +130,7 @@ void loop() {
 
       // Delay during initialization
       if (state_B == 0) {
-        // After delay send the 
+        // After delay send the initial connection message 0x55 0x08 0x08
         if (now - lastActivityStamp > 2000) {
           Serial1.write(0x55);
           Serial1.write(0x08);
