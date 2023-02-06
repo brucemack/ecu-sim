@@ -77,7 +77,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   delay(500);
 
-  Serial.println("OBD2 Diagnostic Scanner V1.3");
+  Serial.println("OBD2 ECU Simulator V1.0");
  
   delay(2000);
 
@@ -113,6 +113,7 @@ void loop() {
     } 
     // If line went high then go back to idle
     else {
+      Serial.println("INFO: Back to idle");
       state_A = 0;
       lastActivityStamp = now;
     }
@@ -131,7 +132,8 @@ void loop() {
       // Delay during initialization
       if (state_B == 0) {
         // After delay send the initial connection message 0x55 0x08 0x08
-        if (now - lastActivityStamp > 2000) {
+        if (now - lastActivityStamp > 1500) {
+          Serial.println("Sending 0x55 0x08 0x08");
           Serial1.write(0x55);
           Serial1.write(0x08);
           Serial1.write(0x08);
