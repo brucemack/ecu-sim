@@ -136,7 +136,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   delay(500);
 
-  Serial.println("OBD2 ECU Simulator V1.1");
+  Serial.println("OBD2 ECU Simulator V1.2");
  
   delay(2000);
 
@@ -199,7 +199,7 @@ void loop() {
     // Look for a timeout
     if ((now - lastActivityStamp) > 5000) {
       state_A = 0;
-      Serial.println("INFO: Inactivitity timeout");
+      Serial.println("INFO: Inactivity timeout");
     }
     // Process state machine
     else {
