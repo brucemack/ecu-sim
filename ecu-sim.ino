@@ -27,6 +27,28 @@ static byte iso_checksum(byte *data, byte len) {
   return crc;
 }
 
+// Supported
+static int generate_01_00(unsigned long x, byte pid, Stream& str) {
+  byte a, b, c, d;
+  a = (byte)((x >> 24) & 0xff);  
+  b = (byte)((x >> 16) & 0xff);  
+  c = (byte)((x >> 8) & 0xff);  
+  d = (byte)((x) & 0xff);    
+  byte out[10];
+  out[0] = 0x48;
+  out[1] = 0x6b;
+  out[2] = 0x10;
+  out[3] = 0x41;
+  out[4] = pid;
+  out[5] = a;
+  out[6] = b;
+  out[7] = c;
+  out[8] = d;
+  out[9] = iso_checksum(out, 9);
+  str.write(out, 10);
+  return 10;
+}
+
 // Engine speed
 static int generate_01_0c(unsigned int rpm, Stream& str) {
   unsigned int r = rpm * 4;
@@ -48,7 +70,7 @@ static int generate_01_0c(unsigned int rpm, Stream& str) {
 // Vehicle speed
 static int generate_01_0d(unsigned char speed, Stream& str) {
   byte a = speed;
-  byte out[8];
+  byte out[7];
   out[0] = 0x48;
   out[1] = 0x6b;
   out[2] = 0x10;
@@ -102,6 +124,60 @@ static void processByte(byte b) {
           ignoreCount += generate_01_0d(45, Serial1); 
           rxMsgLen = 0;
        }
+       // Status
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x01) {
+          ignoreCount += generate_01_00(0x0000L, 0x01, Serial1); 
+          rxMsgLen = 0;
+       }
+       // Supported
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x00) {
+          ignoreCount += generate_01_00(0x8080L, 0x00, Serial1); 
+          rxMsgLen = 0;
+       }
+       // Supported
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x20) {
+          ignoreCount += generate_01_00(0x9090L, 0x20, Serial1); 
+          rxMsgLen = 0;
+       }
+       // Supported
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x40) {
+          ignoreCount += generate_01_00(0xA0A0L, 0x40, Serial1); 
+          rxMsgLen = 0;
+       }
+       // Supported
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x60) {
+          ignoreCount += generate_01_00(0xB0B0L, 0x60, Serial1); 
+          rxMsgLen = 0;
+       }
+       // Supported
+       else if (rxMsg[0] == 0x68 &&
+          rxMsg[1] == 0x6a &&
+          rxMsg[2] == 0xf1 &&
+          rxMsg[3] == 0x01 &&
+          rxMsg[4] == 0x80) {
+          ignoreCount += generate_01_00(0xC0C0L, 0x80, Serial1); 
+          rxMsgLen = 0;
+       }
     } else if (rxMsgLen > 32) {
       Serial.println("INFO: Resetting receive buffer");
       rxMsgLen = 0;
@@ -136,7 +212,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   delay(500);
 
-  Serial.println("OBD2 ECU Simulator V1.2");
+  Serial.println("OBD2 ECU Simulator V1.3");
  
   delay(2000);
 
@@ -245,7 +321,6 @@ void loop() {
             Serial.println(buf);
           }
           */
-
           processByte(r);
           lastActivityStamp = now;
         }    
