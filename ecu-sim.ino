@@ -12,12 +12,14 @@ int state_B = 0;
 // Number of received byte to ignore - used to eliminate
 // process of bytes that we send on the K-Line (i.e. echo
 // ignore).
-int ignoreCount = 0;
+unsigned int ignoreCount = 0;
 
 // This is the buffer that we use to accumulate received data.
-const int MAX_RX_MSG_LEN = 256;
+const unsigned int MAX_RX_MSG_LEN = 256;
 byte rxMsg[MAX_RX_MSG_LEN];
-int rxMsgLen = 0;
+unsigned int rxMsgLen = 0;
+
+const long INTERVAL_P2_MS = 25;
 
 // Inspired by SternOBDII\code\checksum.c
 static byte iso_checksum(byte *data, byte len) {
@@ -85,104 +87,97 @@ static int generate_01_0d(unsigned char speed, Stream& str) {
 /**
  * Handles a byte received on the OBD2 port.
  */
-static void processByte(byte b) {
+static void processMessage() {
 
-  // Buffer the data
-  rxMsg[rxMsgLen++] = b;
-  rxMsgLen = rxMsgLen % MAX_RX_MSG_LEN;
+  bool good = false;
 
-  // In this state we are waiting for ~KW1
-  if (state_B == 1) {
-    if (b == 0xf7) {
-      // Send ACK
-      Serial1.write(0xcc);
-      ignoreCount++;
-      // Go into normal receive mode
-      state_B = 2;
-      rxMsgLen = 0;
-    }
+  // Look for a complete message
+  if (rxMsgLen == 6) {
+    // RPM
+    if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x0c) {
+        ignoreCount += generate_01_0c((unsigned int)random(850, 950), Serial1); 
+        good = true;
+     }
+     // Speed
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x0d) {
+        ignoreCount += generate_01_0d(45, Serial1); 
+        good = true;
+     }
+     // Status
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x01) {
+        ignoreCount += generate_01_00(0x0000L, 0x01, Serial1); 
+        good = true;
+     }
+     // Supported
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x00) {
+        ignoreCount += generate_01_00(0x8080L, 0x00, Serial1); 
+        good = true;
+     }
+     // Supported
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x20) {
+        ignoreCount += generate_01_00(0x9090L, 0x20, Serial1); 
+        good = true;
+     }
+     // Supported
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x40) {
+        ignoreCount += generate_01_00(0xA0A0L, 0x40, Serial1); 
+        good = true;
+     }
+     // Supported
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x60) {
+        ignoreCount += generate_01_00(0xB0B0L, 0x60, Serial1); 
+        good = true;
+     }
+     // Supported
+     else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x01 &&
+        rxMsg[4] == 0x80) {
+        ignoreCount += generate_01_00(0xC0C0L, 0x80, Serial1); 
+        good = true;
+     }
   }
-  // In this state we process commands normally
-  else if (state_B == 2) {
-    // Look for a complete message
-    if (rxMsgLen == 6) {
-      // RPM
-      if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x0c) {
-          ignoreCount += generate_01_0c((unsigned int)random(850, 950), Serial1); 
-          rxMsgLen = 0;
-       }
-       // Speed
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x0d) {
-          ignoreCount += generate_01_0d(45, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Status
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x01) {
-          ignoreCount += generate_01_00(0x0000L, 0x01, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Supported
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x00) {
-          ignoreCount += generate_01_00(0x8080L, 0x00, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Supported
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x20) {
-          ignoreCount += generate_01_00(0x9090L, 0x20, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Supported
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x40) {
-          ignoreCount += generate_01_00(0xA0A0L, 0x40, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Supported
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x60) {
-          ignoreCount += generate_01_00(0xB0B0L, 0x60, Serial1); 
-          rxMsgLen = 0;
-       }
-       // Supported
-       else if (rxMsg[0] == 0x68 &&
-          rxMsg[1] == 0x6a &&
-          rxMsg[2] == 0xf1 &&
-          rxMsg[3] == 0x01 &&
-          rxMsg[4] == 0x80) {
-          ignoreCount += generate_01_00(0xC0C0L, 0x80, Serial1); 
-          rxMsgLen = 0;
-       }
-    } else if (rxMsgLen > 32) {
-      Serial.println("INFO: Resetting receive buffer");
-      rxMsgLen = 0;
+
+  if (!good) {
+    Serial.print("INFO: Unrecognized message: ");
+    for (unsigned int i = 0; i < rxMsgLen; i++) {
+      char buf[16];
+      sprintf(buf,"%02x ",(int)rxMsg[i]);
+      Serial.print(buf);
     }
+    Serial.println();
   }
+
+  rxMsgLen = 0;
 }
 
 void setup() {
@@ -212,7 +207,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   delay(500);
 
-  Serial.println("OBD2 ECU Simulator V1.3");
+  Serial.println("OBD2 ECU Simulator V1.4");
  
   delay(2000);
 
@@ -269,7 +264,7 @@ void loop() {
       }
     }
   }
-  // In this state we process normal serial data
+  // In this state we are waiting for a serial command to be received
   else if (state_A == 2) {
 
     // Look for a timeout
@@ -287,12 +282,12 @@ void loop() {
           Serial1.write(0x55);
           Serial1.write(0x08);
           Serial1.write(0x08);
+          ignoreCount = 3;
           state_B = 1;
           lastActivityStamp = now;
-          ignoreCount = 3;
         }
       }
-      // Now we are waiting for the ~KW1 from the scanner
+      // Here we are waiting for the ~KW1 from the scanner
       else if (state_B == 1) {
         if (now - lastActivityStamp > 2000) {
           // Initialization failed - go back
@@ -300,12 +295,25 @@ void loop() {
           Serial.println("INFO: Initialization timed out (1)");
         }  
       }      
+      // Here we are waiting for an initial byte
+      else if (state_B == 2) {
+      }
+      // Here we are waiting for a complete command
+      else if (state_B == 3) {
+        // Wait for the P2 interval to expire
+        if ((now - lastActivityStamp) > INTERVAL_P2_MS) {
+          // Try to process whatever we have in the buffer
+          processMessage();
+          // Go back to the state where we are waiting on a new message
+          state_B = 2;
+        }
+      }
   
       // Check to see if we have any data from the K-Line
       if (Serial1.available() > 0) {
     
         // Read a byte from the K-Line
-        int r = Serial1.read();
+        byte b = (byte)Serial1.read();
 
         // The K-Line has transmit and receive data so check to see 
         // if we should ignore our own transmission.
@@ -313,16 +321,40 @@ void loop() {
           ignoreCount--;
         } 
         else {
+          // Record time so that our timeout intervals will reset          
+          lastActivityStamp = now;
           /*
           // TEMP
           {
             char buf[16];
-            sprintf(buf,"%x",(int)r);
+            sprintf(buf,"%x",(int)b);
             Serial.println(buf);
           }
           */
-          processByte(r);
-          lastActivityStamp = now;
+          // In this state we are waiting for ~KW1
+          if (state_B == 1) {
+            if (b == 0xf7) {
+              // Send ACK
+              Serial1.write(0xcc);
+              ignoreCount++;
+              // Go into normal receive mode
+              state_B = 2;
+            }
+          }
+          // In this state we are waiting for the start
+          else if (state_B == 2) {
+            // Buffer the data
+            rxMsg[0] = b;
+            rxMsgLen = 1;
+            state_B = 3;                      
+          }
+          // In this state we are waiting for a complete message.
+          // The end of message is indicated by a pause
+          else if (state_B == 3) {
+            // Buffer the data
+            rxMsg[rxMsgLen++] = b;
+            rxMsgLen = rxMsgLen % MAX_RX_MSG_LEN;
+          }
         }    
       }
     }
