@@ -1,3 +1,6 @@
+// ODB2 Engine Control Unit Simulator
+// Bruce MacKinnnon 
+// 25-March-2023
 
 // The serial TX and RX pins used to communicate with the vehicle.
 const byte RX_PIN = 0;
@@ -84,6 +87,31 @@ static int generate_01_0d(unsigned char speed, Stream& str) {
   return 7;
 }
 
+// DTC Codes
+// Currently hard-coded to return two codes:
+//   $P0122 - Trottle position (TP) sensor circuit low input
+//   $P1509 - IACV Circuit failure
+//
+static int generate_03_00(Stream& str) {
+  byte out[11];
+  out[0] = 0x48;
+  out[1] = 0x6b;
+  out[2] = 0x10;
+  // The low nibble is the service code (0x03)
+  out[3] = 0x43;
+  // 6 byte response
+  out[4] = 0x01;
+  out[5] = 0x22;
+  out[6] = 0x15;
+  out[7] = 0x09;
+  out[8] = 0x00;
+  out[9] = 0x00;
+  // Checksum
+  out[10] = iso_checksum(out, 10);
+  str.write(out, 11);
+  return 11;
+}
+
 /**
  * Handles a byte received on the OBD2 port.
  */
@@ -166,7 +194,25 @@ static void processMessage() {
         good = true;
      }
   }
-
+  else if (rxMsgLen == 5) {
+    // Read DTC
+    if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x03) {
+        ignoreCount += generate_03_00(Serial1); 
+        good = true;
+    }
+    // Clear DTC
+    else if (rxMsg[0] == 0x68 &&
+        rxMsg[1] == 0x6a &&
+        rxMsg[2] == 0xf1 &&
+        rxMsg[3] == 0x04) {
+      Serial.println("INFO: Reset DTCs");
+      good = true;
+    }
+  }
+  
   if (!good) {
     Serial.print("INFO: Unrecognized message: ");
     for (unsigned int i = 0; i < rxMsgLen; i++) {
@@ -207,7 +253,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   delay(500);
 
-  Serial.println("OBD2 ECU Simulator V1.4");
+  Serial.println("OBD2 ECU Simulator V1.5");
  
   delay(2000);
 
