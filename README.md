@@ -18,3 +18,13 @@ Software Notes
 The ISO document that describes the physical interface is [here](https://andrewrevill.co.uk/ReferenceLibrary/OBDII%20Specifications%20-%20ISO-9141-2%20(Physical).pdf)
 
 Please see [this page](https://en.wikipedia.org/wiki/OBD-II_PIDs) for a list of the PIDs used.
+
+Copyright
+=========
+
+Copyright (C) 2024 - Bruce MacKinnon
+
+This work is covered under the terms of the GNU Public License (V3). Please consult the LICENSE file for more information.
+
+This work is being made available for non-commercial use. Redistribution, commercial use or sale of any part is prohibited.
+
